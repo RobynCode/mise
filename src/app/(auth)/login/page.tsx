@@ -7,8 +7,8 @@ import { Suspense, useState } from "react";
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("sous@mise.local");
+  const [password, setPassword] = useState("letmecook");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
