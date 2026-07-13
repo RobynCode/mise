@@ -7,8 +7,9 @@ import { Suspense, useState } from "react";
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const [email, setEmail] = useState("sous@mise.local");
-  const [password, setPassword] = useState("letmecook");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -45,6 +46,7 @@ function LoginForm() {
           className="input"
           type="email"
           autoComplete="email"
+          placeholder="sous@mise.local"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -52,15 +54,40 @@ function LoginForm() {
       </div>
       <div className="field">
         <label htmlFor="password">Password</label>
-        <input
-          id="password"
-          className="input"
-          type="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <div style={{ position: "relative" }}>
+          <input
+            id="password"
+            className="input"
+            type={showPassword ? "text" : "password"}
+            autoComplete="current-password"
+            placeholder="letmecook"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{ width: "100%", paddingRight: 68 }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-pressed={showPassword}
+            style={{
+              position: "absolute",
+              right: 8,
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "none",
+              border: "none",
+              padding: "4px 6px",
+              cursor: "pointer",
+              color: "var(--accent)",
+              fontSize: 13,
+              fontWeight: 600,
+            }}
+          >
+            {showPassword ? "Hide" : "Show"}
+          </button>
+        </div>
       </div>
       <button className="btn" type="submit" disabled={busy} style={{ width: "100%" }}>
         {busy ? "Signing in…" : "Sign in"}
