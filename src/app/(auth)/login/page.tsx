@@ -9,7 +9,6 @@ function LoginForm() {
   const params = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -46,7 +45,6 @@ function LoginForm() {
           className="input"
           type="email"
           autoComplete="email"
-          placeholder="sous@mise.local"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -54,40 +52,15 @@ function LoginForm() {
       </div>
       <div className="field">
         <label htmlFor="password">Password</label>
-        <div style={{ position: "relative" }}>
-          <input
-            id="password"
-            className="input"
-            type={showPassword ? "text" : "password"}
-            autoComplete="current-password"
-            placeholder="letmecook"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ width: "100%", paddingRight: 68 }}
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword((v) => !v)}
-            aria-label={showPassword ? "Hide password" : "Show password"}
-            aria-pressed={showPassword}
-            style={{
-              position: "absolute",
-              right: 8,
-              top: "50%",
-              transform: "translateY(-50%)",
-              background: "none",
-              border: "none",
-              padding: "4px 6px",
-              cursor: "pointer",
-              color: "var(--accent)",
-              fontSize: 13,
-              fontWeight: 600,
-            }}
-          >
-            {showPassword ? "Hide" : "Show"}
-          </button>
-        </div>
+        <input
+          id="password"
+          className="input"
+          type="password"
+          autoComplete="current-password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
       </div>
       <button className="btn" type="submit" disabled={busy} style={{ width: "100%" }}>
         {busy ? "Signing in…" : "Sign in"}
@@ -98,18 +71,33 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="auth-wrap">
-      <div className="card card-pad auth-card">
-        <p className="auth-brand">
+    <div className="auth-shell">
+      <div className="auth-visual" aria-hidden="true">
+        <span className="auth-visual-brand">
           Mise<span style={{ color: "var(--accent)" }}>.</span>
+        </span>
+        <p className="auth-visual-quote">
+          “One shared recipe box, one meal plan, one grocery list — for the whole household.”
         </p>
-        <p className="auth-sub">Plan meals, cook together, shop once.</p>
-        <Suspense>
-          <LoginForm />
-        </Suspense>
-        <p style={{ textAlign: "center", marginTop: 18, marginBottom: 0 }}>
-          New here? <Link href="/signup">Create an account</Link>
-        </p>
+        <div className="auth-visual-foot">
+          <span>Plan meals</span>
+          <span>Cook together</span>
+          <span>Shop once</span>
+        </div>
+      </div>
+      <div className="auth-form-side">
+        <div className="card card-pad auth-card">
+          <p className="auth-brand">
+            Mise<span style={{ color: "var(--accent)" }}>.</span>
+          </p>
+          <p className="auth-sub">Plan meals, cook together, shop once.</p>
+          <Suspense>
+            <LoginForm />
+          </Suspense>
+          <p style={{ textAlign: "center", marginTop: 18, marginBottom: 0 }}>
+            New here? <Link href="/signup">Create an account</Link>
+          </p>
+        </div>
       </div>
     </div>
   );

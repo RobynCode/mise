@@ -19,12 +19,12 @@ export async function POST(req: Request) {
     if (!MEALS.includes(meal)) {
       return NextResponse.json({ error: "Pick a meal." }, { status: 400 });
     }
-    const recipe = recipes.byId(recipeId);
+    const recipe = await recipes.byId(recipeId);
     if (!recipe || recipe.householdId !== user.householdId) {
       return NextResponse.json({ error: "Recipe not found." }, { status: 404 });
     }
 
-    const entry = planEntries.create({
+    const entry = await planEntries.create({
       date,
       meal,
       servings: servings || recipe.servings,

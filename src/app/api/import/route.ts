@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { recipes } from "@/lib/repo";
 import { requireUser } from "@/lib/auth";
 import { importRecipeFromUrl } from "@/lib/importRecipe";
+import { computeRecipeNutrition } from "@/lib/nutrition";
 
 export async function POST(req: Request) {
   try {
@@ -11,8 +12,9 @@ export async function POST(req: Request) {
     if (!url) return NextResponse.json({ error: "Paste a recipe URL first." }, { status: 400 });
 
     const imported = await importRecipeFromUrl(url);
+    const nutrition = await computeRecipeNutrition(imported.ingredients, imported.servings);
 
-    const recipe = recipes.create({
+    const recipe = await recipes.create({
       title: imported.title,
       description: imported.description,
       imageUrl: imported.imageUrl,
@@ -24,6 +26,8 @@ export async function POST(req: Request) {
       ingredients: JSON.stringify(imported.ingredients),
       steps: JSON.stringify(imported.steps),
       tags: "",
+      nutrition: nutrition ? JSON.stringify(nutrition) : null,
+      caloriesPerServing: nutrition?.perServing.calories ?? null,
       householdId: user.householdId,
       createdById: user.id,
     });

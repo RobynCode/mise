@@ -3,8 +3,9 @@
  * and a few planned meals. Run with: npm run db:seed
  */
 import bcrypt from "bcryptjs";
-import { sqlite } from "../src/lib/db";
+import { driver, ready } from "../src/lib/db";
 import { users, households, recipes, planEntries } from "../src/lib/repo";
+import { computeRecipeNutrition } from "../src/lib/nutrition";
 
 function ing(name: string, amount: number | null, unit: string | null, kind: "wet" | "dry" | "count") {
   return { id: `seed_${Math.random().toString(36).slice(2, 9)}`, name, amount, unit, kind };
@@ -16,18 +17,33 @@ function dateStr(offsetDays: number) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function main() {
-  if (users.byEmail("demo@mise.local")) {
+async function main() {
+  await ready();
+  console.log(`Seeding ${driver.kind} database…`);
+
+  if (await users.byEmail("demo@mise.local")) {
     console.log("Seed data already present — skipping.");
     return;
   }
 
-  const household = households.create({ name: "Demo Kitchen", inviteCode: "DEMO42" });
+  const household = await households.create({ name: "Demo Kitchen", inviteCode: "DEMO42" });
   const passwordHash = bcrypt.hashSync("letmecook", 10);
-  const demo = users.create({ name: "Demo Cook", email: "demo@mise.local", passwordHash, householdId: household.id });
-  users.create({ name: "Sous Chef", email: "sous@mise.local", passwordHash, householdId: household.id });
+  const demo = await users.create({ name: "Demo Cook", email: "demo@mise.local", passwordHash, householdId: household.id });
+  await users.create({ name: "Sous Chef", email: "sous@mise.local", passwordHash, householdId: household.id });
 
-  const dal = recipes.create({
+  // Guest account for quick demos (same household so they see the demo recipes)
+  await users.create({ name: "Guest", email: "guest@mise.local", passwordHash, householdId: household.id });
+
+  async function createWithNutrition(data: Parameters<typeof recipes.create>[0]) {
+    const nutrition = await computeRecipeNutrition(JSON.parse(data.ingredients), data.servings);
+    return recipes.create({
+      ...data,
+      nutrition: nutrition ? JSON.stringify(nutrition) : null,
+      caloriesPerServing: nutrition?.perServing.calories ?? null,
+    });
+  }
+
+  const dal = await createWithNutrition({
     title: "Weeknight Red Lentil Dal",
     description: "A cozy, pantry-friendly dal that comes together in one pot. Great over rice with a squeeze of lime.",
     imageUrl: null, sourceUrl: null, sourceName: null,
@@ -55,7 +71,7 @@ function main() {
     ]),
   });
 
-  const cookies = recipes.create({
+  const cookies = await createWithNutrition({
     title: "Brown Butter Chocolate Chip Cookies",
     description: "Chewy centres, crisp edges, and that nutty brown-butter depth. Chill the dough if you can wait.",
     imageUrl: null, sourceUrl: null, sourceName: null,
@@ -82,7 +98,7 @@ function main() {
     ]),
   });
 
-  const stirfry = recipes.create({
+  const stirfry = await createWithNutrition({
     title: "Crispy Tofu & Broccoli Stir-Fry",
     description: "Fast, glossy, and better than takeout. Press the tofu well for maximum crisp.",
     imageUrl: null, sourceUrl: null, sourceName: null,
@@ -109,15 +125,20 @@ function main() {
     ]),
   });
 
-  planEntries.create({ date: dateStr(0), meal: "dinner", servings: 4, recipeId: dal.id, householdId: household.id });
-  planEntries.create({ date: dateStr(1), meal: "dinner", servings: 2, recipeId: stirfry.id, householdId: household.id });
-  planEntries.create({ date: dateStr(2), meal: "snack", servings: 24, recipeId: cookies.id, householdId: household.id });
+  await planEntries.create({ date: dateStr(0), meal: "dinner", servings: 4, recipeId: dal.id, householdId: household.id });
+  await planEntries.create({ date: dateStr(1), meal: "dinner", servings: 2, recipeId: stirfry.id, householdId: household.id });
+  await planEntries.create({ date: dateStr(2), meal: "snack", servings: 24, recipeId: cookies.id, householdId: household.id });
 
   console.log("Seeded demo data:");
   console.log("  → sign in as demo@mise.local / letmecook");
   console.log("  → second member: sous@mise.local / letmecook");
   console.log("  → household invite code: DEMO42");
-  sqlite.close();
+  console.log("  → guest demo link: /guest");
 }
 
-main();
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exitCode = 1;
+  })
+  .finally(() => driver.close());

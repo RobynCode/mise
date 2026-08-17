@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const PUBLIC_PATHS = ["/login", "/signup"];
+const PUBLIC_PATHS = ["/login", "/signup", "/guest"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -9,6 +9,8 @@ export async function middleware(req: NextRequest) {
   const isPublic =
     PUBLIC_PATHS.some((p) => pathname.startsWith(p)) ||
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/guest-login") ||
+    pathname.startsWith("/api/health") ||
     pathname.startsWith("/uploads");
 
   const token = req.cookies.get("mise_session")?.value;

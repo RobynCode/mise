@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { sqlite } from "./db";
+import { query, execute, driver, dialect, isPostgres, ready } from "./db";
 
 /* ---------- row types ---------- */
 
@@ -34,6 +34,8 @@ export interface RecipeRow {
   ingredients: string;
   steps: string;
   tags: string;
+  nutrition: string | null; // JSON RecipeNutrition
+  caloriesPerServing: number | null;
   householdId: string;
   createdById: string | null;
   createdAt: string;
@@ -56,7 +58,7 @@ export interface GroceryItemRow {
   amount: number | null;
   unit: string | null;
   kind: string;
-  checked: number; // sqlite boolean
+  checked: boolean;
   note: string;
   householdId: string;
   createdAt: string;
@@ -67,67 +69,87 @@ export type UserWithHousehold = UserRow & {
   household: HouseholdRow & { members: MemberSummary[] };
 };
 
+/** COUNT() comes back as a bigint string from Postgres and a number from SQLite. */
+function toCount(v: unknown): number {
+  return typeof v === "number" ? v : Number(v ?? 0);
+}
+
 /* ---------- users ---------- */
 
 export const users = {
-  byId(id: string): UserRow | undefined {
-    return sqlite.prepare("SELECT * FROM users WHERE id = ?").get(id) as UserRow | undefined;
+  async byId(id: string): Promise<UserRow | undefined> {
+    const rows = await query<UserRow>("SELECT * FROM users WHERE id = ?", [id]);
+    return rows[0];
   },
-  byEmail(email: string): UserRow | undefined {
-    return sqlite.prepare("SELECT * FROM users WHERE email = ?").get(email) as UserRow | undefined;
+  async byEmail(email: string): Promise<UserRow | undefined> {
+    const rows = await query<UserRow>("SELECT * FROM users WHERE email = ?", [email]);
+    return rows[0];
   },
-  withHousehold(id: string): UserWithHousehold | null {
-    const user = users.byId(id);
+  async withHousehold(id: string): Promise<UserWithHousehold | null> {
+    const user = await users.byId(id);
     if (!user) return null;
-    const household = households.byId(user.householdId);
+    const household = await households.byId(user.householdId);
     if (!household) return null;
-    const members = sqlite
-      .prepare("SELECT id, name, email FROM users WHERE householdId = ? ORDER BY name")
-      .all(user.householdId) as MemberSummary[];
+    const members = await query<MemberSummary>(
+      "SELECT id, name, email FROM users WHERE householdId = ? ORDER BY name",
+      [user.householdId],
+    );
     return { ...user, household: { ...household, members } };
   },
-  create(data: { name: string; email: string; passwordHash: string; householdId: string }): UserRow {
+  async create(data: { name: string; email: string; passwordHash: string; householdId: string }): Promise<UserRow> {
     const id = randomUUID();
-    sqlite
-      .prepare("INSERT INTO users (id, name, email, passwordHash, householdId) VALUES (?, ?, ?, ?, ?)")
-      .run(id, data.name, data.email, data.passwordHash, data.householdId);
-    return users.byId(id)!;
+    await execute(
+      "INSERT INTO users (id, name, email, passwordHash, householdId) VALUES (?, ?, ?, ?, ?)",
+      [id, data.name, data.email, data.passwordHash, data.householdId],
+    );
+    return (await users.byId(id))!;
   },
-  update(id: string, data: Partial<Pick<UserRow, "name" | "wetUnits" | "dryUnits" | "householdId">>) {
+  async update(
+    id: string,
+    data: Partial<Pick<UserRow, "name" | "wetUnits" | "dryUnits" | "householdId">>,
+  ): Promise<void> {
     const fields = Object.keys(data);
     if (fields.length === 0) return;
     const sets = fields.map((f) => `${f} = ?`).join(", ");
-    sqlite.prepare(`UPDATE users SET ${sets} WHERE id = ?`).run(...fields.map((f) => (data as Record<string, unknown>)[f]), id);
+    await execute(`UPDATE users SET ${sets} WHERE id = ?`, [
+      ...fields.map((f) => (data as Record<string, unknown>)[f]),
+      id,
+    ]);
   },
-  countInHousehold(householdId: string): number {
-    const row = sqlite.prepare("SELECT COUNT(*) AS n FROM users WHERE householdId = ?").get(householdId) as { n: number };
-    return row.n;
+  async countInHousehold(householdId: string): Promise<number> {
+    const rows = await query<{ n: unknown }>("SELECT COUNT(*) AS n FROM users WHERE householdId = ?", [householdId]);
+    return toCount(rows[0]?.n);
   },
 };
 
 /* ---------- households ---------- */
 
 export const households = {
-  byId(id: string): HouseholdRow | undefined {
-    return sqlite.prepare("SELECT * FROM households WHERE id = ?").get(id) as HouseholdRow | undefined;
+  async byId(id: string): Promise<HouseholdRow | undefined> {
+    const rows = await query<HouseholdRow>("SELECT * FROM households WHERE id = ?", [id]);
+    return rows[0];
   },
-  byInviteCode(code: string): HouseholdRow | undefined {
-    return sqlite.prepare("SELECT * FROM households WHERE inviteCode = ?").get(code) as HouseholdRow | undefined;
+  async byInviteCode(code: string): Promise<HouseholdRow | undefined> {
+    const rows = await query<HouseholdRow>("SELECT * FROM households WHERE inviteCode = ?", [code]);
+    return rows[0];
   },
-  create(data: { name: string; inviteCode: string }): HouseholdRow {
+  async create(data: { name: string; inviteCode: string }): Promise<HouseholdRow> {
     const id = randomUUID();
-    sqlite.prepare("INSERT INTO households (id, name, inviteCode) VALUES (?, ?, ?)").run(id, data.name, data.inviteCode);
-    return households.byId(id)!;
+    await execute("INSERT INTO households (id, name, inviteCode) VALUES (?, ?, ?)", [id, data.name, data.inviteCode]);
+    return (await households.byId(id))!;
   },
-  update(id: string, data: Partial<Pick<HouseholdRow, "name" | "inviteCode">>) {
+  async update(id: string, data: Partial<Pick<HouseholdRow, "name" | "inviteCode">>): Promise<void> {
     const fields = Object.keys(data);
     if (fields.length === 0) return;
     const sets = fields.map((f) => `${f} = ?`).join(", ");
-    sqlite.prepare(`UPDATE households SET ${sets} WHERE id = ?`).run(...fields.map((f) => (data as Record<string, unknown>)[f]), id);
+    await execute(`UPDATE households SET ${sets} WHERE id = ?`, [
+      ...fields.map((f) => (data as Record<string, unknown>)[f]),
+      id,
+    ]);
   },
-  deleteIfEmpty(id: string) {
-    if (users.countInHousehold(id) === 0) {
-      sqlite.prepare("DELETE FROM households WHERE id = ?").run(id);
+  async deleteIfEmpty(id: string): Promise<void> {
+    if ((await users.countInHousehold(id)) === 0) {
+      await execute("DELETE FROM households WHERE id = ?", [id]);
     }
   },
 };
@@ -146,65 +168,78 @@ export interface RecipeInput {
   ingredients: string;
   steps: string;
   tags: string;
+  nutrition?: string | null;
+  caloriesPerServing?: number | null;
 }
 
 export const recipes = {
-  byId(id: string): RecipeRow | undefined {
-    return sqlite.prepare("SELECT * FROM recipes WHERE id = ?").get(id) as RecipeRow | undefined;
+  async byId(id: string): Promise<RecipeRow | undefined> {
+    const rows = await query<RecipeRow>("SELECT * FROM recipes WHERE id = ?", [id]);
+    return rows[0];
   },
-  forHousehold(householdId: string, opts?: { query?: string; limit?: number; orderBy?: "updated" | "title" }): RecipeRow[] {
-    const order = opts?.orderBy === "title" ? "title COLLATE NOCASE ASC" : "updatedAt DESC";
+  async forHousehold(
+    householdId: string,
+    opts?: { query?: string; limit?: number; orderBy?: "updated" | "title"; minCal?: number; maxCal?: number },
+  ): Promise<RecipeRow[]> {
+    const order = opts?.orderBy === "title" ? `${dialect.caseInsensitive("title")} ASC` : "updatedAt DESC";
+    const where: string[] = ["householdId = ?"];
+    const params: unknown[] = [householdId];
     if (opts?.query) {
+      where.push(`(title ${dialect.like} ? OR tags ${dialect.like} ? OR ingredients ${dialect.like} ?)`);
       const like = `%${opts.query}%`;
-      return sqlite
-        .prepare(
-          `SELECT * FROM recipes WHERE householdId = ?
-           AND (title LIKE ? OR tags LIKE ? OR ingredients LIKE ?)
-           ORDER BY ${order}${opts?.limit ? ` LIMIT ${opts.limit}` : ""}`,
-        )
-        .all(householdId, like, like, like) as RecipeRow[];
+      params.push(like, like, like);
     }
-    return sqlite
-      .prepare(`SELECT * FROM recipes WHERE householdId = ? ORDER BY ${order}${opts?.limit ? ` LIMIT ${opts.limit}` : ""}`)
-      .all(householdId) as RecipeRow[];
+    if (opts?.minCal != null) {
+      where.push("caloriesPerServing >= ?");
+      params.push(opts.minCal);
+    }
+    if (opts?.maxCal != null) {
+      where.push("caloriesPerServing <= ?");
+      params.push(opts.maxCal);
+    }
+    return query<RecipeRow>(
+      `SELECT * FROM recipes WHERE ${where.join(" AND ")} ORDER BY ${order}${opts?.limit ? ` LIMIT ${Number(opts.limit)}` : ""}`,
+      params,
+    );
   },
-  create(data: RecipeInput & { householdId: string; createdById: string | null }): RecipeRow {
+  async create(data: RecipeInput & { householdId: string; createdById: string | null }): Promise<RecipeRow> {
     const id = randomUUID();
-    sqlite
-      .prepare(
-        `INSERT INTO recipes
-         (id, title, description, imageUrl, sourceUrl, sourceName, servings, prepMinutes, cookMinutes, ingredients, steps, tags, householdId, createdById)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
+    await execute(
+      `INSERT INTO recipes
+       (id, title, description, imageUrl, sourceUrl, sourceName, servings, prepMinutes, cookMinutes, ingredients, steps, tags, nutrition, caloriesPerServing, householdId, createdById)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
         id, data.title, data.description, data.imageUrl, data.sourceUrl, data.sourceName,
         data.servings, data.prepMinutes, data.cookMinutes, data.ingredients, data.steps, data.tags,
+        data.nutrition ?? null, data.caloriesPerServing ?? null,
         data.householdId, data.createdById,
-      );
-    return recipes.byId(id)!;
+      ],
+    );
+    return (await recipes.byId(id))!;
   },
-  update(id: string, data: RecipeInput) {
-    sqlite
-      .prepare(
-        `UPDATE recipes SET
-         title = ?, description = ?, imageUrl = ?, sourceUrl = ?, sourceName = ?,
-         servings = ?, prepMinutes = ?, cookMinutes = ?, ingredients = ?, steps = ?, tags = ?,
-         updatedAt = datetime('now')
-         WHERE id = ?`,
-      )
-      .run(
+  async update(id: string, data: RecipeInput): Promise<void> {
+    await execute(
+      `UPDATE recipes SET
+       title = ?, description = ?, imageUrl = ?, sourceUrl = ?, sourceName = ?,
+       servings = ?, prepMinutes = ?, cookMinutes = ?, ingredients = ?, steps = ?, tags = ?,
+       nutrition = ?, caloriesPerServing = ?,
+       updatedAt = ${dialect.now}
+       WHERE id = ?`,
+      [
         data.title, data.description, data.imageUrl, data.sourceUrl, data.sourceName,
         data.servings, data.prepMinutes, data.cookMinutes, data.ingredients, data.steps, data.tags,
+        data.nutrition ?? null, data.caloriesPerServing ?? null,
         id,
-      );
+      ],
+    );
   },
-  remove(id: string) {
-    sqlite.prepare("DELETE FROM recipes WHERE id = ?").run(id);
+  async remove(id: string): Promise<void> {
+    await execute("DELETE FROM recipes WHERE id = ?", [id]);
   },
-  creatorName(recipe: RecipeRow): string | null {
+  async creatorName(recipe: RecipeRow): Promise<string | null> {
     if (!recipe.createdById) return null;
-    const row = sqlite.prepare("SELECT name FROM users WHERE id = ?").get(recipe.createdById) as { name: string } | undefined;
-    return row?.name ?? null;
+    const rows = await query<{ name: string }>("SELECT name FROM users WHERE id = ?", [recipe.createdById]);
+    return rows[0]?.name ?? null;
   },
 };
 
@@ -215,77 +250,134 @@ export type PlanEntryWithRecipe = PlanEntryRow & {
 };
 
 export const planEntries = {
-  byId(id: string): PlanEntryRow | undefined {
-    return sqlite.prepare("SELECT * FROM plan_entries WHERE id = ?").get(id) as PlanEntryRow | undefined;
+  async byId(id: string): Promise<PlanEntryRow | undefined> {
+    const rows = await query<PlanEntryRow>("SELECT * FROM plan_entries WHERE id = ?", [id]);
+    return rows[0];
   },
-  inRange(householdId: string, start: string, end: string): PlanEntryWithRecipe[] {
-    const rows = sqlite
-      .prepare(
-        `SELECT p.*, r.title AS r_title, r.servings AS r_servings, r.ingredients AS r_ingredients
-         FROM plan_entries p JOIN recipes r ON r.id = p.recipeId
-         WHERE p.householdId = ? AND p.date >= ? AND p.date <= ?
-         ORDER BY p.date ASC`,
-      )
-      .all(householdId, start, end) as Array<PlanEntryRow & { r_title: string; r_servings: number; r_ingredients: string }>;
+  async inRange(householdId: string, start: string, end: string): Promise<PlanEntryWithRecipe[]> {
+    const rows = await query<PlanEntryRow & { r_title: string; r_servings: number; r_ingredients: string }>(
+      `SELECT p.*, r.title AS r_title, r.servings AS r_servings, r.ingredients AS r_ingredients
+       FROM plan_entries p JOIN recipes r ON r.id = p.recipeId
+       WHERE p.householdId = ? AND p.date >= ? AND p.date <= ?
+       ORDER BY p.date ASC`,
+      [householdId, start, end],
+    );
     return rows.map(({ r_title, r_servings, r_ingredients, ...p }) => ({
       ...p,
       recipe: { id: p.recipeId, title: r_title, servings: r_servings, ingredients: r_ingredients },
     }));
   },
-  create(data: { date: string; meal: string; servings: number; recipeId: string; householdId: string }): PlanEntryRow {
+  async create(data: {
+    date: string;
+    meal: string;
+    servings: number;
+    recipeId: string;
+    householdId: string;
+  }): Promise<PlanEntryRow> {
     const id = randomUUID();
-    sqlite
-      .prepare("INSERT INTO plan_entries (id, date, meal, servings, recipeId, householdId) VALUES (?, ?, ?, ?, ?, ?)")
-      .run(id, data.date, data.meal, data.servings, data.recipeId, data.householdId);
-    return planEntries.byId(id)!;
+    await execute(
+      "INSERT INTO plan_entries (id, date, meal, servings, recipeId, householdId) VALUES (?, ?, ?, ?, ?, ?)",
+      [id, data.date, data.meal, data.servings, data.recipeId, data.householdId],
+    );
+    return (await planEntries.byId(id))!;
   },
-  remove(id: string) {
-    sqlite.prepare("DELETE FROM plan_entries WHERE id = ?").run(id);
+  async remove(id: string): Promise<void> {
+    await execute("DELETE FROM plan_entries WHERE id = ?", [id]);
   },
 };
 
 /* ---------- grocery items ---------- */
 
 export const groceryItems = {
-  byId(id: string): GroceryItemRow | undefined {
-    return sqlite.prepare("SELECT * FROM grocery_items WHERE id = ?").get(id) as GroceryItemRow | undefined;
+  async byId(id: string): Promise<GroceryItemRow | undefined> {
+    const rows = await query<GroceryItemRow>("SELECT * FROM grocery_items WHERE id = ?", [id]);
+    const row = rows[0];
+    return row ? { ...row, checked: dialect.toBool(row.checked) } : undefined;
   },
-  forHousehold(householdId: string): GroceryItemRow[] {
-    return sqlite
-      .prepare("SELECT * FROM grocery_items WHERE householdId = ? ORDER BY checked ASC, name COLLATE NOCASE ASC")
-      .all(householdId) as GroceryItemRow[];
-  },
-  countUnchecked(householdId: string): number {
-    const row = sqlite
-      .prepare("SELECT COUNT(*) AS n FROM grocery_items WHERE householdId = ? AND checked = 0")
-      .get(householdId) as { n: number };
-    return row.n;
-  },
-  create(data: { name: string; amount: number | null; unit: string | null; kind: string; note?: string; householdId: string }) {
-    sqlite
-      .prepare("INSERT INTO grocery_items (id, name, amount, unit, kind, note, householdId) VALUES (?, ?, ?, ?, ?, ?, ?)")
-      .run(randomUUID(), data.name, data.amount, data.unit, data.kind, data.note ?? "", data.householdId);
-  },
-  createMany(items: Array<{ name: string; amount: number | null; unit: string | null; kind: string; note: string }>, householdId: string) {
-    const stmt = sqlite.prepare(
-      "INSERT INTO grocery_items (id, name, amount, unit, kind, note, householdId) VALUES (?, ?, ?, ?, ?, ?, ?)",
+  async forHousehold(householdId: string): Promise<GroceryItemRow[]> {
+    const rows = await query<GroceryItemRow>(
+      `SELECT * FROM grocery_items WHERE householdId = ? ORDER BY checked ASC, ${dialect.caseInsensitive("name")} ASC`,
+      [householdId],
     );
-    const insertAll = sqlite.transaction((rows: typeof items) => {
-      for (const i of rows) stmt.run(randomUUID(), i.name, i.amount, i.unit, i.kind, i.note, householdId);
+    return rows.map((r) => ({ ...r, checked: dialect.toBool(r.checked) }));
+  },
+  async countUnchecked(householdId: string): Promise<number> {
+    const rows = await query<{ n: unknown }>(
+      "SELECT COUNT(*) AS n FROM grocery_items WHERE householdId = ? AND checked = ?",
+      [householdId, dialect.bool(false)],
+    );
+    return toCount(rows[0]?.n);
+  },
+  async create(data: {
+    name: string;
+    amount: number | null;
+    unit: string | null;
+    kind: string;
+    note?: string;
+    householdId: string;
+  }): Promise<void> {
+    await execute(
+      "INSERT INTO grocery_items (id, name, amount, unit, kind, note, householdId) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [randomUUID(), data.name, data.amount, data.unit, data.kind, data.note ?? "", data.householdId],
+    );
+  },
+  async createMany(
+    items: Array<{ name: string; amount: number | null; unit: string | null; kind: string; note: string }>,
+    householdId: string,
+  ): Promise<void> {
+    if (items.length === 0) return;
+    await ready();
+    await driver.transaction(async (tx) => {
+      for (const i of items) {
+        await tx.execute(
+          "INSERT INTO grocery_items (id, name, amount, unit, kind, note, householdId) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          [randomUUID(), i.name, i.amount, i.unit, i.kind, i.note, householdId],
+        );
+      }
     });
-    insertAll(items);
   },
-  setChecked(id: string, checked: boolean) {
-    sqlite.prepare("UPDATE grocery_items SET checked = ? WHERE id = ?").run(checked ? 1 : 0, id);
+  async setChecked(id: string, checked: boolean): Promise<void> {
+    await execute("UPDATE grocery_items SET checked = ? WHERE id = ?", [dialect.bool(checked), id]);
   },
-  remove(id: string) {
-    sqlite.prepare("DELETE FROM grocery_items WHERE id = ?").run(id);
+  async remove(id: string): Promise<void> {
+    await execute("DELETE FROM grocery_items WHERE id = ?", [id]);
   },
-  clear(householdId: string, onlyChecked: boolean) {
+  async clear(householdId: string, onlyChecked: boolean): Promise<void> {
     if (onlyChecked) {
-      sqlite.prepare("DELETE FROM grocery_items WHERE householdId = ? AND checked = 1").run(householdId);
+      await execute("DELETE FROM grocery_items WHERE householdId = ? AND checked = ?", [
+        householdId,
+        dialect.bool(true),
+      ]);
     } else {
-      sqlite.prepare("DELETE FROM grocery_items WHERE householdId = ?").run(householdId);
+      await execute("DELETE FROM grocery_items WHERE householdId = ?", [householdId]);
     }
+  },
+};
+
+/* ---------- nutrition cache (USDA lookups) ---------- */
+
+type CachedFood = { per100g: [number, number, number, number, number, number, number] };
+
+export const nutritionCache = {
+  /** undefined = never looked up; null = looked up, no result. */
+  async get(name: string): Promise<CachedFood | null | undefined> {
+    const rows = await query<{ data: string | null }>("SELECT data FROM nutrition_cache WHERE name = ?", [
+      name.toLowerCase(),
+    ]);
+    if (rows.length === 0) return undefined;
+    const data = rows[0].data;
+    if (data == null) return null;
+    try {
+      return JSON.parse(data);
+    } catch {
+      return null;
+    }
+  },
+  async set(name: string, data: CachedFood | null): Promise<void> {
+    const payload = data ? JSON.stringify(data) : null;
+    const sql = isPostgres
+      ? "INSERT INTO nutrition_cache (name, data) VALUES (?, ?) ON CONFLICT (name) DO UPDATE SET data = EXCLUDED.data"
+      : "INSERT OR REPLACE INTO nutrition_cache (name, data) VALUES (?, ?)";
+    await execute(sql, [name.toLowerCase(), payload]);
   },
 };

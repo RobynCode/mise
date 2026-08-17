@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ShoppingBasket, X } from "lucide-react";
 import { displayAmount, type IngredientKind, type System } from "@/lib/units";
 import { addDays, todayStr } from "@/lib/dates";
 
@@ -96,7 +97,7 @@ export default function GroceryList({ items, prefs }: { items: Item[]; prefs: { 
             <input id="end" className="input" type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
           </div>
           <button type="submit" className="btn" disabled={busy}>
-            {busy ? "Building…" : "🧺 Generate list"}
+            {busy ? "Building…" : (<><ShoppingBasket size={16} aria-hidden="true" /> Generate list</>)}
           </button>
         </form>
         <p className="hint" style={{ marginTop: 10 }}>
@@ -172,7 +173,7 @@ export default function GroceryList({ items, prefs }: { items: Item[]; prefs: { 
                     {item.note && <span className="grocery-detail"> · for {item.note}</span>}
                   </label>
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => remove(item.id)} aria-label={`Remove ${item.name}`}>
-                    ✕
+                    <X size={15} aria-hidden="true" />
                   </button>
                 </li>
               );

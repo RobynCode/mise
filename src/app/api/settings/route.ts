@@ -17,7 +17,7 @@ export async function PATCH(req: Request) {
     if (Object.keys(data).length === 0) {
       return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
     }
-    users.update(user.id, data);
+    await users.update(user.id, data);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Not signed in" }, { status: 401 });

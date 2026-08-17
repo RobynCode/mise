@@ -4,15 +4,20 @@ import { getCurrentUser } from "@/lib/auth";
 import { recipes } from "@/lib/repo";
 import RecipeView from "@/components/RecipeView";
 import type { Ingredient, System } from "@/lib/units";
+import type { RecipeNutrition } from "@/lib/nutrition";
 
 export default async function RecipePage({ params }: { params: Promise<{ id: string }> }) {
   const user = (await getCurrentUser())!;
   const { id } = await params;
-  const recipe = recipes.byId(id);
+  const recipe = await recipes.byId(id);
   if (!recipe || recipe.householdId !== user.householdId) notFound();
 
   let ingredients: Ingredient[] = [];
   let steps: string[] = [];
+  let nutrition: RecipeNutrition | null = null;
+  try {
+    nutrition = recipe.nutrition ? JSON.parse(recipe.nutrition) : null;
+  } catch {}
   try {
     ingredients = JSON.parse(recipe.ingredients);
   } catch {}
@@ -37,10 +42,11 @@ export default async function RecipePage({ params }: { params: Promise<{ id: str
           prepMinutes: recipe.prepMinutes,
           cookMinutes: recipe.cookMinutes,
           tags: recipe.tags,
-          createdByName: recipes.creatorName(recipe),
+          createdByName: await recipes.creatorName(recipe),
         }}
         ingredients={ingredients}
         steps={steps}
+        nutrition={nutrition}
         prefs={{ wet: user.wetUnits as System, dry: user.dryUnits as System }}
       />
     </div>

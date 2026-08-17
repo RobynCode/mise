@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { todayStr, friendlyDate, MEALS, MEAL_ORDER } from "@/lib/dates";
 
 interface Entry {
@@ -107,19 +108,27 @@ export default function PlanCalendar({
 
   const dayEntries = selectedDay ? byDate.get(selectedDay) ?? [] : [];
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setSelectedDay(null);
+    }
+    if (selectedDay) window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedDay]);
+
   return (
     <>
       <div className="spread">
         <h2 style={{ margin: 0 }}>{monthLabel}</h2>
         <div className="cal-controls">
           <Link href={`/plan?month=${shiftMonth(month, -1)}`} className="btn btn-secondary btn-sm" aria-label="Previous month">
-            ← Prev
+            <ChevronLeft size={15} aria-hidden="true" /> Prev
           </Link>
           <Link href="/plan" className="btn btn-ghost btn-sm">
             Today
           </Link>
           <Link href={`/plan?month=${shiftMonth(month, 1)}`} className="btn btn-secondary btn-sm" aria-label="Next month">
-            Next →
+            Next <ChevronRight size={15} aria-hidden="true" />
           </Link>
         </div>
       </div>
@@ -162,7 +171,7 @@ export default function PlanCalendar({
             <div className="modal-head">
               <h2 id="day-title">{friendlyDate(selectedDay)}</h2>
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSelectedDay(null)} aria-label="Close">
-                ✕
+                <X size={16} aria-hidden="true" />
               </button>
             </div>
 

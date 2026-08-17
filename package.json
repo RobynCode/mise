@@ -2,13 +2,14 @@
   "name": "mise",
   "version": "1.0.0",
   "private": true,
-  "description": "Mise \u2014 household recipe manager, meal planner, and grocery list.",
+  "description": "Mise — household recipe manager, meal planner, and grocery list.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "db:seed": "tsx scripts/seed.ts",
+    "db:migrate": "tsx scripts/migrate-to-postgres.ts",
     "setup": "npm install && tsx scripts/seed.ts"
   },
   "dependencies": {
@@ -18,17 +19,23 @@
     "better-sqlite3": "^12.11.1",
     "cheerio": "^1.0.0",
     "jose": "^5.9.6",
-    "next": "^15.1.6",
+    "lucide-react": "^1.31.0",
+    "next": "^16.3.1",
+    "pg": "^8.22.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "tsx": "^4.19.2"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.10.0",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "tsx": "^4.19.2",
     "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

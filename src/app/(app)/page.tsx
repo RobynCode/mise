@@ -10,9 +10,9 @@ export default async function DashboardPage() {
   const start = todayStr();
   const end = addDays(start, 6);
 
-  const entries = planEntries.inRange(user.householdId, start, end);
-  const recentRecipes = recipes.forHousehold(user.householdId, { limit: 4 });
-  const uncheckedCount = groceryItems.countUnchecked(user.householdId);
+  const entries = await planEntries.inRange(user.householdId, start, end);
+  const recentRecipes = await recipes.forHousehold(user.householdId, { limit: 4 });
+  const uncheckedCount = await groceryItems.countUnchecked(user.householdId);
 
   const byDate = new Map<string, typeof entries>();
   for (const e of entries) {

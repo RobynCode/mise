@@ -32,8 +32,8 @@ export default async function PlanPage({
 
   const { start, end } = monthRange(ym);
 
-  const entries = planEntries.inRange(user.householdId, start, end);
-  const recipeOptions = recipes.forHousehold(user.householdId, { orderBy: "title" });
+  const entries = await planEntries.inRange(user.householdId, start, end);
+  const recipeOptions = await recipes.forHousehold(user.householdId, { orderBy: "title" });
 
   return (
     <div className="stack" style={{ gap: 20 }}>

@@ -16,7 +16,7 @@ export async function POST(req: Request) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
         return NextResponse.json({ error: "Pick a start and end date." }, { status: 400 });
       }
-      const entries = planEntries.inRange(user.householdId, start, end);
+      const entries = await planEntries.inRange(user.householdId, start, end);
       if (entries.length === 0) {
         return NextResponse.json(
           { error: "No meals are planned in that date range yet. Add some in the meal plan first." },
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
         );
       }
       const items = buildGroceryList(entries);
-      groceryItems.createMany(items, user.householdId);
+      await groceryItems.createMany(items, user.householdId);
       return NextResponse.json({ ok: true, added: items.length });
     }
 
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
       const rawUnit = String(body?.unit ?? "").trim();
       const canon = rawUnit ? canonicalUnit(rawUnit) : null;
       const unit = rawUnit ? (canon ?? rawUnit) : null;
-      groceryItems.create({
+      await groceryItems.create({
         name: name.slice(0, 160),
         amount: Number.isFinite(amountNum) && amountNum > 0 ? amountNum : null,
         unit,
@@ -56,7 +56,7 @@ export async function DELETE(req: Request) {
     const user = await requireUser();
     const url = new URL(req.url);
     const scope = url.searchParams.get("scope"); // "checked" | "all"
-    groceryItems.clear(user.householdId, scope === "checked");
+    await groceryItems.clear(user.householdId, scope === "checked");
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Not signed in" }, { status: 401 });

@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { CalendarPlus, Pencil, Trash2, X } from "lucide-react";
 import { displayAmount, type Ingredient, type System } from "@/lib/units";
 import { todayStr, MEALS } from "@/lib/dates";
+import NutritionPanel from "./NutritionPanel";
+import type { RecipeNutrition } from "@/lib/nutrition";
 
 interface RecipeMeta {
   id: string;
@@ -24,11 +27,13 @@ export default function RecipeView({
   recipe,
   ingredients,
   steps,
+  nutrition,
   prefs,
 }: {
   recipe: RecipeMeta;
   ingredients: Ingredient[];
   steps: string[];
+  nutrition?: RecipeNutrition | null;
   prefs: { wet: System; dry: System };
 }) {
   const router = useRouter();
@@ -41,6 +46,14 @@ export default function RecipeView({
 
   const factor = servings / recipe.servings;
   const tags = recipe.tags.split(",").map((t) => t.trim()).filter(Boolean);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setPlanOpen(false);
+    }
+    if (planOpen) window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [planOpen]);
 
   async function addToPlan(e: React.FormEvent) {
     e.preventDefault();
@@ -101,13 +114,13 @@ export default function RecipeView({
           )}
           <div className="row" style={{ marginTop: 10 }}>
             <button type="button" className="btn" onClick={() => setPlanOpen(true)}>
-              🗓️ Add to meal plan
+              <CalendarPlus size={16} aria-hidden="true" /> Add to meal plan
             </button>
             <Link href={`/recipes/${recipe.id}/edit`} className="btn btn-secondary">
-              Edit
+              <Pencil size={15} aria-hidden="true" /> Edit
             </Link>
             <button type="button" className="btn btn-ghost" onClick={deleteRecipe}>
-              Delete
+              <Trash2 size={15} aria-hidden="true" /> Delete
             </button>
           </div>
           {notice && (
@@ -162,6 +175,7 @@ export default function RecipeView({
           </ul>
         </section>
 
+        <div>
         <section aria-labelledby="steps-heading">
           <h2 id="steps-heading">Method</h2>
           {steps.length === 0 ? (
@@ -174,6 +188,8 @@ export default function RecipeView({
             </ol>
           )}
         </section>
+        {nutrition && <NutritionPanel nutrition={nutrition} />}
+        </div>
       </div>
 
       {planOpen && (
@@ -182,7 +198,7 @@ export default function RecipeView({
             <div className="modal-head">
               <h2 id="plan-title">Add to meal plan</h2>
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPlanOpen(false)} aria-label="Close">
-                ✕
+                <X size={16} aria-hidden="true" />
               </button>
             </div>
             <form onSubmit={addToPlan}>

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Plus, X } from "lucide-react";
 import { UNITS, type Ingredient } from "@/lib/units";
 import { parseIngredientLines, newId } from "@/lib/ingredients";
 
@@ -297,14 +298,14 @@ export default function RecipeForm({ initial }: { initial?: RecipeDraft }) {
                 onChange={(e) => patchIngredient(ing.id, { name: e.target.value })}
               />
               <button type="button" className="btn btn-ghost btn-icon" onClick={() => removeIngredient(ing.id)} aria-label={`Remove ingredient ${idx + 1}`}>
-                ✕
+                <X size={15} aria-hidden="true" />
               </button>
             </div>
           ))}
         </div>
         <div style={{ marginTop: 10 }}>
           <button type="button" className="btn btn-secondary btn-sm" onClick={addIngredient}>
-            + Add ingredient
+            <Plus size={14} aria-hidden="true" /> Add ingredient
           </button>
         </div>
       </section>
@@ -335,14 +336,14 @@ export default function RecipeForm({ initial }: { initial?: RecipeDraft }) {
                 onClick={() => setDraft((d) => ({ ...d, steps: d.steps.filter((_, j) => j !== i) }))}
                 aria-label={`Remove step ${i + 1}`}
               >
-                ✕
+                <X size={15} aria-hidden="true" />
               </button>
             </div>
           ))}
         </div>
         <div style={{ marginTop: 10 }}>
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDraft((d) => ({ ...d, steps: [...d.steps, ""] }))}>
-            + Add step
+            <Plus size={14} aria-hidden="true" /> Add step
           </button>
         </div>
       </section>

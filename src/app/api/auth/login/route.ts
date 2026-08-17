@@ -7,7 +7,7 @@ export async function POST(req: Request) {
   const email = String(body?.email ?? "").trim().toLowerCase();
   const password = String(body?.password ?? "");
 
-  const user = users.byEmail(email);
+  const user = await users.byEmail(email);
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
     return NextResponse.json({ error: "Email or password is incorrect." }, { status: 401 });
   }

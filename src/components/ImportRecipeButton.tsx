@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { Download, X } from "lucide-react";
 
 export default function ImportRecipeButton() {
   const router = useRouter();
@@ -48,7 +49,7 @@ export default function ImportRecipeButton() {
   return (
     <>
       <button type="button" className="btn" onClick={() => setOpen(true)}>
-        ⤓ Import from web
+        <Download size={16} aria-hidden="true" /> Import from web
       </button>
 
       {open && (
@@ -57,7 +58,7 @@ export default function ImportRecipeButton() {
             <div className="modal-head">
               <h2 id="import-title">Import a recipe</h2>
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOpen(false)} aria-label="Close">
-                ✕
+                <X size={16} aria-hidden="true" />
               </button>
             </div>
             <p style={{ color: "var(--muted)", marginTop: 0 }}>

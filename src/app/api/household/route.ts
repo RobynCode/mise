@@ -11,7 +11,7 @@ export async function POST(req: Request) {
 
     if (action === "join") {
       const code = String(body?.code ?? "").trim().toUpperCase();
-      const household = households.byInviteCode(code);
+      const household = await households.byInviteCode(code);
       if (!household) {
         return NextResponse.json({ error: "That invite code doesn't match any household." }, { status: 404 });
       }
@@ -19,33 +19,33 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "You're already in this household." }, { status: 400 });
       }
       const oldHouseholdId = user.householdId;
-      users.update(user.id, { householdId: household.id });
-      households.deleteIfEmpty(oldHouseholdId);
+      await users.update(user.id, { householdId: household.id });
+      await households.deleteIfEmpty(oldHouseholdId);
       return NextResponse.json({ ok: true, name: household.name });
     }
 
     if (action === "rename") {
       const name = String(body?.name ?? "").trim().slice(0, 80);
       if (!name) return NextResponse.json({ error: "Type a household name." }, { status: 400 });
-      households.update(user.householdId, { name });
+      await households.update(user.householdId, { name });
       return NextResponse.json({ ok: true });
     }
 
     if (action === "regenerate") {
       const code = newInviteCode();
-      households.update(user.householdId, { inviteCode: code });
+      await households.update(user.householdId, { inviteCode: code });
       return NextResponse.json({ ok: true, code });
     }
 
     if (action === "leave") {
-      if (users.countInHousehold(user.householdId) <= 1) {
+      if ((await users.countInHousehold(user.householdId)) <= 1) {
         return NextResponse.json(
           { error: "You're the only member — this is already your own household." },
           { status: 400 },
         );
       }
-      const household = households.create({ name: `${user.name}'s kitchen`, inviteCode: newInviteCode() });
-      users.update(user.id, { householdId: household.id });
+      const household = await households.create({ name: `${user.name}'s kitchen`, inviteCode: newInviteCode() });
+      await users.update(user.id, { householdId: household.id });
       return NextResponse.json({ ok: true });
     }
 

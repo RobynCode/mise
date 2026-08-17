@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Check, Copy, RefreshCw } from "lucide-react";
 
 interface Member {
   id: string;
@@ -126,7 +127,7 @@ export default function HouseholdPanel({
                 {household.inviteCode}
               </span>
               <button type="button" className="btn btn-secondary btn-sm" onClick={copyCode}>
-                {copied ? "Copied ✓" : "Copy"}
+                {copied ? (<><Check size={14} aria-hidden="true" /> Copied</>) : (<><Copy size={14} aria-hidden="true" /> Copy</>)}
               </button>
               <button
                 type="button"
@@ -137,7 +138,7 @@ export default function HouseholdPanel({
                   }
                 }}
               >
-                New code
+                <RefreshCw size={14} aria-hidden="true" /> New code
               </button>
             </div>
           </section>

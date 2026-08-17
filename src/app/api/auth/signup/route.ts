@@ -18,12 +18,12 @@ export async function POST(req: Request) {
   if (password.length < 8) {
     return NextResponse.json({ error: "Password must be at least 8 characters." }, { status: 400 });
   }
-  if (users.byEmail(email)) {
+  if (await users.byEmail(email)) {
     return NextResponse.json({ error: "An account with that email already exists." }, { status: 409 });
   }
 
-  const household = households.create({ name: `${name}'s kitchen`, inviteCode: newInviteCode() });
-  const user = users.create({
+  const household = await households.create({ name: `${name}'s kitchen`, inviteCode: newInviteCode() });
+  const user = await users.create({
     name,
     email,
     passwordHash: await hashPassword(password),

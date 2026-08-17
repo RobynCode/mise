@@ -8,6 +8,7 @@ interface RecipeLike {
   prepMinutes: number | null;
   cookMinutes: number | null;
   sourceName: string | null;
+  caloriesPerServing?: number | null;
 }
 
 export default function RecipeCard({ recipe }: { recipe: RecipeLike }) {
@@ -16,8 +17,10 @@ export default function RecipeCard({ recipe }: { recipe: RecipeLike }) {
     <article className="card recipe-card">
       <Link href={`/recipes/${recipe.id}`}>
         {recipe.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img className="recipe-card-img" src={recipe.imageUrl} alt="" loading="lazy" />
+          <div className="recipe-card-img-wrap">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="recipe-card-img" src={recipe.imageUrl} alt="" loading="lazy" />
+          </div>
         ) : (
           <div className="recipe-card-placeholder" aria-hidden="true">
             {recipe.title.slice(0, 1).toUpperCase()}
@@ -28,6 +31,7 @@ export default function RecipeCard({ recipe }: { recipe: RecipeLike }) {
           <div className="recipe-card-meta">
             <span>Serves {recipe.servings}</span>
             {total > 0 && <span>{total} min</span>}
+            {recipe.caloriesPerServing != null && <span>{Math.round(recipe.caloriesPerServing)} cal</span>}
             {recipe.sourceName && <span>{recipe.sourceName}</span>}
           </div>
         </div>

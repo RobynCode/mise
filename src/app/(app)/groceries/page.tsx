@@ -7,7 +7,7 @@ export const metadata = { title: "Groceries" };
 
 export default async function GroceriesPage() {
   const user = (await getCurrentUser())!;
-  const items = groceryItems.forHousehold(user.householdId);
+  const items = await groceryItems.forHousehold(user.householdId);
 
   return (
     <div className="stack" style={{ gap: 20 }}>

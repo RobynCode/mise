@@ -9,7 +9,7 @@ export const metadata = { title: "Edit recipe" };
 export default async function EditRecipePage({ params }: { params: Promise<{ id: string }> }) {
   const user = (await getCurrentUser())!;
   const { id } = await params;
-  const recipe = recipes.byId(id);
+  const recipe = await recipes.byId(id);
   if (!recipe || recipe.householdId !== user.householdId) notFound();
 
   let ingredients: Ingredient[] = [];
