@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { UtensilsCrossed } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { recipes } from "@/lib/repo";
 import RecipeCard from "@/components/RecipeCard";
@@ -38,6 +39,9 @@ export default async function RecipesPage({
           </p>
         </div>
         <div className="row">
+          <Link href="/recipes/menus" className="btn btn-secondary">
+            <UtensilsCrossed size={16} aria-hidden="true" /> Menus
+          </Link>
           <ImportRecipeButton />
           <Link href="/recipes/new" className="btn btn-secondary">
             + New recipe

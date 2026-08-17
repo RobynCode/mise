@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Plus, X } from "lucide-react";
 import { UNITS, type Ingredient } from "@/lib/units";
 import { parseIngredientLines, newId } from "@/lib/ingredients";
+import { MENU_CATEGORIES } from "@/lib/menus";
 
 interface RecipeDraft {
   id?: string;
@@ -17,6 +18,7 @@ interface RecipeDraft {
   prepMinutes: number | null;
   cookMinutes: number | null;
   tags: string;
+  menuCategory: string;
   ingredients: Ingredient[];
   steps: string[];
 }
@@ -31,6 +33,7 @@ const EMPTY: RecipeDraft = {
   prepMinutes: null,
   cookMinutes: null,
   tags: "",
+  menuCategory: "",
   ingredients: [],
   steps: [""],
 };
@@ -170,6 +173,23 @@ export default function RecipeForm({ initial }: { initial?: RecipeDraft }) {
               placeholder="weeknight, vegan, comfort food"
             />
             <p className="hint">Separate with commas.</p>
+          </div>
+            <div className="field">
+            <label htmlFor="menuCategory">Menu category</label>
+            <select
+              id="menuCategory"
+              className="select"
+              value={draft.menuCategory}
+              onChange={(e) => patch({ menuCategory: e.target.value })}
+            >
+              <option value="">Uncategorized</option>
+              {MENU_CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <p className="hint">Where this recipe appears on a restaurant-style menu.</p>
           </div>
         </div>
         <div className="grid-2">

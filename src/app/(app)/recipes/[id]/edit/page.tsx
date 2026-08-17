@@ -37,6 +37,7 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
           prepMinutes: recipe.prepMinutes,
           cookMinutes: recipe.cookMinutes,
           tags: recipe.tags,
+          menuCategory: recipe.menuCategory,
           ingredients,
           steps: steps.length ? steps : [""],
         }}

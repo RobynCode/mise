@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS recipes (
   tags TEXT NOT NULL DEFAULT '',
   nutrition TEXT,
   caloriesPerServing REAL,
+  menuCategory TEXT NOT NULL DEFAULT '',
   householdId TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
   createdById TEXT REFERENCES users(id) ON DELETE SET NULL,
   createdAt TEXT NOT NULL DEFAULT (datetime('now')),
@@ -114,6 +115,23 @@ CREATE TABLE IF NOT EXISTS nutrition_cache (
   data TEXT,
   createdAt TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS menu_group (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  theme TEXT NOT NULL DEFAULT 'classic',
+  primaryColor TEXT NOT NULL DEFAULT '#000000',
+  secondaryColor TEXT NOT NULL DEFAULT '#FFFFFF',
+  householdId TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_menu_group_household ON menu_group(householdId);
+
+CREATE TABLE IF NOT EXISTS menu_group_recipes (
+  menuGroupId TEXT NOT NULL REFERENCES menu_group(id) ON DELETE CASCADE,
+  recipeId TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+  PRIMARY KEY (menuGroupId, recipeId)
+);
 `;
 
 const POSTGRES_SCHEMA = `
@@ -150,6 +168,7 @@ CREATE TABLE IF NOT EXISTS recipes (
   tags TEXT NOT NULL DEFAULT '',
   nutrition TEXT,
   "caloriesperserving" DOUBLE PRECISION,
+  "menucategory" TEXT NOT NULL DEFAULT '',
   "householdid" TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
   "createdbyid" TEXT REFERENCES users(id) ON DELETE SET NULL,
   "createdat" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -187,6 +206,22 @@ CREATE TABLE IF NOT EXISTS nutrition_cache (
   data TEXT,
   "createdat" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS menu_group (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  "householdid" TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  "createdat" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  theme TEXT NOT NULL DEFAULT 'classic',
+  primarycolor TEXT NOT NULL DEFAULT '#000000',
+  secondarycolor TEXT NOT NULL DEFAULT '#FFFFFF'
+);
+
+CREATE TABLE IF NOT EXISTS menu_group_recipes (
+  "menugroupid" TEXT NOT NULL REFERENCES menu_group(id) ON DELETE CASCADE,
+  "recipeid" TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+  PRIMARY KEY ("menugroupid", "recipeid")
+);
 `;
 
 /* ------------------------------------------------------------------ *
@@ -202,7 +237,8 @@ CREATE TABLE IF NOT EXISTS nutrition_cache (
 const CAMEL_FIELDS = [
   "inviteCode", "createdAt", "updatedAt", "passwordHash", "wetUnits", "dryUnits",
   "householdId", "createdById", "recipeId", "imageUrl", "sourceUrl", "sourceName",
-  "prepMinutes", "cookMinutes", "caloriesPerServing",
+  "prepMinutes", "cookMinutes", "caloriesPerServing", "menuCategory", "menuGroupId",
+  "primaryColor", "secondaryColor",
 ];
 
 const LOWER_TO_CAMEL = new Map(CAMEL_FIELDS.map((f) => [f.toLowerCase(), f]));
@@ -270,6 +306,7 @@ function createSqliteDriver(): DbDriver {
       const cols = (db.prepare("PRAGMA table_info(recipes)").all() as Array<{ name: string }>).map((c) => c.name);
       if (!cols.includes("nutrition")) db.exec("ALTER TABLE recipes ADD COLUMN nutrition TEXT");
       if (!cols.includes("caloriesPerServing")) db.exec("ALTER TABLE recipes ADD COLUMN caloriesPerServing REAL");
+      if (!cols.includes("menuCategory")) db.exec("ALTER TABLE recipes ADD COLUMN menuCategory TEXT NOT NULL DEFAULT ''");
     },
     async close() {
       db.close();
@@ -438,6 +475,17 @@ function createPostgresDriver(): DbDriver {
       }
       if (!cols.includes("caloriesperserving")) {
         await exec(`ALTER TABLE recipes ADD COLUMN "caloriesperserving" DOUBLE PRECISION`, []);
+      }
+      if (!cols.includes("menucategory")) {
+        await exec(`ALTER TABLE recipes ADD COLUMN "menucategory" TEXT NOT NULL DEFAULT ''`, []);
+      }
+      const { rows: menuGroupCols } = await exec(
+        `SELECT column_name FROM information_schema.columns WHERE table_name = 'menu_group'`,
+        [],
+      );
+      const mgCols = (menuGroupCols as Array<{ column_name: string }>).map((r) => r.column_name.toLowerCase());
+      if (!mgCols.includes("theme")) {
+        await exec(`ALTER TABLE menu_group ADD COLUMN theme TEXT NOT NULL DEFAULT 'classic'`, []);
       }
     },
     async close() {

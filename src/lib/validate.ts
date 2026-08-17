@@ -1,5 +1,6 @@
 import { randomBytes } from "crypto";
 import { kindOfUnit, type Ingredient } from "./units";
+import { isMenuCategory, isMenuTheme, themeById } from "./menus";
 
 export function newInviteCode() {
   // 6 chars, unambiguous alphabet
@@ -50,5 +51,20 @@ export function sanitizeRecipeInput(body: Record<string, unknown>) {
     ingredients: JSON.stringify(ingredients),
     steps: JSON.stringify(steps),
     tags: String(body.tags ?? "").trim().slice(0, 300),
+    menuCategory: isMenuCategory(String(body.menuCategory ?? "")) ? String(body.menuCategory) : "",
+  };
+}
+
+export function sanitizeMenuGroupInput(body: Record<string, unknown>) {
+  const name = String(body.name ?? "").trim().slice(0, 80);
+  if (!name) throw new Error("Give the menu a name.");
+  const themeInput = String(body.theme ?? "classic");
+  const theme = isMenuTheme(themeInput) ? themeInput : "classic";
+  const preset = themeById(theme);
+  return {
+    name,
+    theme,
+    primaryColor: preset.primaryColor,
+    secondaryColor: preset.secondaryColor,
   };
 }

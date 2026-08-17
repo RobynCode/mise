@@ -36,6 +36,7 @@ export interface RecipeRow {
   tags: string;
   nutrition: string | null; // JSON RecipeNutrition
   caloriesPerServing: number | null;
+  menuCategory: string;
   householdId: string;
   createdById: string | null;
   createdAt: string;
@@ -170,6 +171,7 @@ export interface RecipeInput {
   tags: string;
   nutrition?: string | null;
   caloriesPerServing?: number | null;
+  menuCategory?: string;
 }
 
 export const recipes = {
@@ -206,12 +208,12 @@ export const recipes = {
     const id = randomUUID();
     await execute(
       `INSERT INTO recipes
-       (id, title, description, imageUrl, sourceUrl, sourceName, servings, prepMinutes, cookMinutes, ingredients, steps, tags, nutrition, caloriesPerServing, householdId, createdById)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, title, description, imageUrl, sourceUrl, sourceName, servings, prepMinutes, cookMinutes, ingredients, steps, tags, nutrition, caloriesPerServing, menuCategory, householdId, createdById)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id, data.title, data.description, data.imageUrl, data.sourceUrl, data.sourceName,
         data.servings, data.prepMinutes, data.cookMinutes, data.ingredients, data.steps, data.tags,
-        data.nutrition ?? null, data.caloriesPerServing ?? null,
+        data.nutrition ?? null, data.caloriesPerServing ?? null, data.menuCategory ?? "",
         data.householdId, data.createdById,
       ],
     );
@@ -222,13 +224,13 @@ export const recipes = {
       `UPDATE recipes SET
        title = ?, description = ?, imageUrl = ?, sourceUrl = ?, sourceName = ?,
        servings = ?, prepMinutes = ?, cookMinutes = ?, ingredients = ?, steps = ?, tags = ?,
-       nutrition = ?, caloriesPerServing = ?,
+       nutrition = ?, caloriesPerServing = ?, menuCategory = ?,
        updatedAt = ${dialect.now}
        WHERE id = ?`,
       [
         data.title, data.description, data.imageUrl, data.sourceUrl, data.sourceName,
         data.servings, data.prepMinutes, data.cookMinutes, data.ingredients, data.steps, data.tags,
-        data.nutrition ?? null, data.caloriesPerServing ?? null,
+        data.nutrition ?? null, data.caloriesPerServing ?? null, data.menuCategory ?? "",
         id,
       ],
     );
@@ -240,6 +242,94 @@ export const recipes = {
     if (!recipe.createdById) return null;
     const rows = await query<{ name: string }>("SELECT name FROM users WHERE id = ?", [recipe.createdById]);
     return rows[0]?.name ?? null;
+  },
+};
+
+/* ---------- menu groups (faux restaurant menus) ---------- */
+
+export interface MenuGroupRow {
+  id: string;
+  name: string;
+  theme: string;
+  primaryColor: string;
+  secondaryColor: string;
+  householdId: string;
+  createdAt: string;
+}
+
+export const menuGroups = {
+  async byId(id: string): Promise<MenuGroupRow | undefined> {
+    const rows = await query<MenuGroupRow>("SELECT * FROM menu_group WHERE id = ?", [id]);
+    return rows[0];
+  },
+  async forHousehold(householdId: string): Promise<MenuGroupRow[]> {
+    return query<MenuGroupRow>(
+      `SELECT * FROM menu_group WHERE householdId = ? ORDER BY ${dialect.caseInsensitive("name")} ASC`,
+      [householdId],
+    );
+  },
+  async create(data: {
+    name: string;
+    theme: string;
+    primaryColor: string;
+    secondaryColor: string;
+    householdId: string;
+  }): Promise<MenuGroupRow> {
+    const id = randomUUID();
+    await execute(
+      "INSERT INTO menu_group (id, name, theme, primaryColor, secondaryColor, householdId) VALUES (?, ?, ?, ?, ?, ?)",
+      [id, data.name, data.theme, data.primaryColor, data.secondaryColor, data.householdId],
+    );
+    return (await menuGroups.byId(id))!;
+  },
+  async update(
+    id: string,
+    data: Partial<Pick<MenuGroupRow, "name" | "theme" | "primaryColor" | "secondaryColor">>,
+  ): Promise<void> {
+    const fields = Object.keys(data);
+    if (fields.length === 0) return;
+    const sets = fields.map((f) => `${f} = ?`).join(", ");
+    await execute(`UPDATE menu_group SET ${sets} WHERE id = ?`, [
+      ...fields.map((f) => (data as Record<string, unknown>)[f]),
+      id,
+    ]);
+  },
+  async remove(id: string): Promise<void> {
+    await execute("DELETE FROM menu_group WHERE id = ?", [id]);
+  },
+  async recipeIds(menuGroupId: string): Promise<string[]> {
+    const rows = await query<{ recipeId: string }>("SELECT recipeId FROM menu_group_recipes WHERE menuGroupId = ?", [
+      menuGroupId,
+    ]);
+    return rows.map((r) => r.recipeId);
+  },
+  async recipesForGroup(menuGroupId: string): Promise<RecipeRow[]> {
+    return query<RecipeRow>(
+      `SELECT r.* FROM recipes r
+       JOIN menu_group_recipes m ON m.recipeId = r.id
+       WHERE m.menuGroupId = ?
+       ORDER BY ${dialect.caseInsensitive("r.title")} ASC`,
+      [menuGroupId],
+    );
+  },
+  async countRecipes(menuGroupId: string): Promise<number> {
+    const rows = await query<{ n: unknown }>("SELECT COUNT(*) AS n FROM menu_group_recipes WHERE menuGroupId = ?", [
+      menuGroupId,
+    ]);
+    return toCount(rows[0]?.n);
+  },
+  /** Replaces the full recipe membership for a menu in one transaction. */
+  async setRecipes(menuGroupId: string, recipeIds: string[]): Promise<void> {
+    await ready();
+    await driver.transaction(async (tx) => {
+      await tx.execute("DELETE FROM menu_group_recipes WHERE menuGroupId = ?", [menuGroupId]);
+      for (const recipeId of recipeIds) {
+        await tx.execute("INSERT INTO menu_group_recipes (menuGroupId, recipeId) VALUES (?, ?)", [
+          menuGroupId,
+          recipeId,
+        ]);
+      }
+    });
   },
 };
 
