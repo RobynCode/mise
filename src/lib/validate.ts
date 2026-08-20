@@ -58,8 +58,8 @@ export function sanitizeRecipeInput(body: Record<string, unknown>) {
 export function sanitizeMenuGroupInput(body: Record<string, unknown>) {
   const name = String(body.name ?? "").trim().slice(0, 80);
   if (!name) throw new Error("Give the menu a name.");
-  const themeInput = String(body.theme ?? "classic");
-  const theme = isMenuTheme(themeInput) ? themeInput : "classic";
+  const themeInput = String(body.theme ?? "bistro");
+  const theme = isMenuTheme(themeInput) ? themeInput : "bistro";
   const preset = themeById(theme);
   return {
     name,

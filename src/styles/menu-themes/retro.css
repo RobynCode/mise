@@ -1,0 +1,30 @@
+/* Retro / comic book: bold outlines, halftone dots, pop-art color */
+
+.menu-theme-retro {
+  background:
+    radial-gradient(color-mix(in srgb, var(--text) 14%, transparent) 1.4px, transparent 1.6px) 0 0 / 14px 14px,
+    #fff6d8;
+  border: 3px solid var(--text);
+  border-radius: 10px;
+  box-shadow: 6px 6px 0 var(--text);
+}
+[data-theme="dark"] .menu-theme-retro {
+  background:
+    radial-gradient(color-mix(in srgb, #fff 16%, transparent) 1.4px, transparent 1.6px) 0 0 / 14px 14px,
+    #2a1f0f;
+}
+
+.menu-theme-retro .menu-section-title {
+  font-family: "Arial Black", Impact, var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #d81159;
+}
+.menu-theme-retro .menu-section-title::after {
+  height: 3px;
+  background: repeating-linear-gradient(90deg, var(--text) 0 8px, transparent 8px 14px);
+}
+
+.menu-theme-retro .menu-item { border-bottom: 2px solid var(--text); }
+.menu-theme-retro .menu-item-name { font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em; color: var(--text); }
+.menu-theme-retro .menu-item-meta { font-weight: 700; color: #0a6cff; }

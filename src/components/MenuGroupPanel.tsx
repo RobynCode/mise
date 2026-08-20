@@ -198,7 +198,10 @@ export default function MenuGroupPanel({
             <p>Check off recipes on the left to build it out.</p>
           </div>
         ) : (
-          <div className="card card-pad" style={{ "--menu-accent": accent } as React.CSSProperties}>
+          <div
+            className={`card card-pad menu-theme-${theme}`}
+            style={{ "--menu-accent": accent } as React.CSSProperties}
+          >
             {grouped.map((section) => (
               <div key={section.key} className="menu-section">
                 <h3 className="menu-section-title">{section.label}</h3>

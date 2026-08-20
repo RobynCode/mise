@@ -3,6 +3,8 @@
    Display: Fraunces  ·  Body: Public Sans
    ============================================================ */
 
+@import "../styles/menu-themes/index.css";
+
 :root {
   --bg: #f7f5f0;
   --bg-elevated: #fbfaf6;
