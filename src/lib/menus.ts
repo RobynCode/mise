@@ -19,16 +19,19 @@ export function isMenuCategory(v: string): v is MenuCategory {
   return CATEGORY_VALUES.has(v);
 }
 
+/** Presets resolve to their display label; anything else is a household's custom category label. */
 export function menuCategoryLabel(value: string): string {
-  return MENU_CATEGORIES.find((c) => c.value === value)?.label ?? "Uncategorized";
+  if (!value) return "Uncategorized";
+  return MENU_CATEGORIES.find((c) => c.value === value)?.label ?? value;
 }
 
-/** Preset visual styles a household can pick for a menu. Only the swatch is used for now — full themed layouts come later. */
+/** Preset visual styles a household can pick for a menu. Each one maps to a `.menu-theme-<value>`
+ *  stylesheet in src/styles/menu-themes/ that restyles the menu preview's headings, dividers, and text. */
 export const MENU_THEMES = [
-  { value: "classic", label: "Classic Bistro", primaryColor: "#2f6b48", secondaryColor: "#f7ecd9" },
-  { value: "modern", label: "Modern Slate", primaryColor: "#20242b", secondaryColor: "#ffffff" },
-  { value: "trattoria", label: "Trattoria Red", primaryColor: "#8c2f26", secondaryColor: "#fbf3e6" },
-  { value: "minimal", label: "Minimal Mono", primaryColor: "#000000", secondaryColor: "#ffffff" },
+  { value: "bistro", label: "Bistro Fancy", primaryColor: "#2f6b48", secondaryColor: "#f7ecd9" },
+  { value: "retro", label: "Retro Comic", primaryColor: "#d81159", secondaryColor: "#fff6d8" },
+  { value: "rustic", label: "Rustic Farmhouse", primaryColor: "#6b4423", secondaryColor: "#f1e6d2" },
+  { value: "chalkboard", label: "Chalkboard Café", primaryColor: "#f2efe4", secondaryColor: "#232b23" },
 ] as const;
 
 export type MenuThemeId = (typeof MENU_THEMES)[number]["value"];

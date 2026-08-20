@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
-import { MENU_CATEGORIES, MENU_THEMES, menuCategoryLabel, themeById } from "@/lib/menus";
+import { MENU_CATEGORIES, MENU_THEMES, menuCategoryLabel } from "@/lib/menus";
+import MenuCategoryField from "@/components/MenuCategoryField";
+import ColorPicker from "@/components/ColorPicker";
 
 interface RecipeOption {
   id: string;
@@ -19,6 +21,8 @@ interface MenuGroupData {
   id: string;
   name: string;
   theme: string;
+  primaryColor: string;
+  secondaryColor: string;
 }
 
 export default function MenuGroupPanel({
@@ -33,33 +37,58 @@ export default function MenuGroupPanel({
   const router = useRouter();
   const [name, setName] = useState(menu.name);
   const [theme, setTheme] = useState(menu.theme);
+  const [primaryColor, setPrimaryColor] = useState(menu.primaryColor);
+  const [secondaryColor, setSecondaryColor] = useState(menu.secondaryColor);
   const [selected, setSelected] = useState<Set<string>>(new Set(initialRecipeIds));
+  const [categories, setCategories] = useState<Record<string, string>>(() =>
+    Object.fromEntries(allRecipes.map((r) => [r.id, r.menuCategory])),
+  );
   const [search, setSearch] = useState("");
   const [savingDetails, setSavingDetails] = useState(false);
   const [notice, setNotice] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
+  const recipesWithCategory = useMemo(
+    () => allRecipes.map((r) => ({ ...r, menuCategory: categories[r.id] ?? r.menuCategory })),
+    [allRecipes, categories],
+  );
+
   const filteredOptions = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return allRecipes;
-    return allRecipes.filter((r) => r.title.toLowerCase().includes(q));
-  }, [allRecipes, search]);
+    if (!q) return recipesWithCategory;
+    return recipesWithCategory.filter((r) => r.title.toLowerCase().includes(q));
+  }, [recipesWithCategory, search]);
 
   const grouped = useMemo(() => {
     const byCategory = new Map<string, RecipeOption[]>();
-    for (const r of allRecipes) {
+    for (const r of recipesWithCategory) {
       if (!selected.has(r.id)) continue;
       const key = r.menuCategory || "uncategorized";
       const list = byCategory.get(key) ?? [];
       list.push(r);
       byCategory.set(key, list);
     }
-    const order = [...MENU_CATEGORIES.map((c) => c.value), "uncategorized"];
+    const presetOrder: string[] = MENU_CATEGORIES.map((c) => c.value);
+    const customKeys = Array.from(byCategory.keys())
+      .filter((k) => k !== "uncategorized" && !presetOrder.includes(k))
+      .sort((a, b) => a.localeCompare(b));
+    const order = [...presetOrder, ...customKeys, "uncategorized"];
     return order
-      .map((key) => ({ key, label: menuCategoryLabel(key), items: byCategory.get(key) ?? [] }))
+      .map((key) => ({
+        key,
+        label: key === "uncategorized" ? "Uncategorized" : menuCategoryLabel(key),
+        items: byCategory.get(key) ?? [],
+      }))
       .filter((section) => section.items.length > 0);
-  }, [allRecipes, selected]);
+  }, [recipesWithCategory, selected]);
 
-  const accent = themeById(theme).primaryColor;
+
+  const accent = primaryColor;
+
+  function pickTheme(t: (typeof MENU_THEMES)[number]) {
+    setTheme(t.value);
+    setPrimaryColor(t.primaryColor);
+    setSecondaryColor(t.secondaryColor);
+  }
 
   async function saveDetails(e: React.FormEvent) {
     e.preventDefault();
@@ -68,7 +97,7 @@ export default function MenuGroupPanel({
     const res = await fetch(`/api/menus/${menu.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, theme }),
+      body: JSON.stringify({ name, theme, primaryColor, secondaryColor }),
     });
     setSavingDetails(false);
     if (res.ok) {
@@ -93,6 +122,20 @@ export default function MenuGroupPanel({
     if (!res.ok) {
       setSelected(selected); // roll back on failure
       setNotice({ kind: "err", text: "Couldn't update the recipe list." });
+    }
+  }
+
+  async function updateCategory(recipeId: string, value: string) {
+    const previous = categories[recipeId];
+    setCategories((c) => ({ ...c, [recipeId]: value }));
+    const res = await fetch(`/api/recipes/${recipeId}/category`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ menuCategory: value }),
+    });
+    if (!res.ok) {
+      setCategories((c) => ({ ...c, [recipeId]: previous }));
+      setNotice({ kind: "err", text: "Couldn't update the recipe's category." });
     }
   }
 
@@ -130,7 +173,7 @@ export default function MenuGroupPanel({
                   role="radio"
                   aria-checked={theme === t.value}
                   className={`theme-swatch${theme === t.value ? " is-selected" : ""}`}
-                  onClick={() => setTheme(t.value)}
+                  onClick={() => pickTheme(t)}
                   style={{ "--swatch-a": t.primaryColor, "--swatch-b": t.secondaryColor } as React.CSSProperties}
                 >
                   <span className="theme-swatch-preview" aria-hidden="true" />
@@ -138,6 +181,14 @@ export default function MenuGroupPanel({
                 </button>
               ))}
             </div>
+          </div>
+          <div className="field">
+            <label>Colors</label>
+            <div className="color-picker-row">
+              <ColorPicker value={primaryColor} onChange={setPrimaryColor} label="Primary" />
+              <ColorPicker value={secondaryColor} onChange={setSecondaryColor} label="Secondary" />
+            </div>
+            <p className="hint">Fine-tune the swatch and preview accent for this menu.</p>
           </div>
           <div className="row" style={{ justifyContent: "space-between" }}>
             <button type="button" className="btn btn-ghost" onClick={deleteMenu}>
@@ -182,11 +233,19 @@ export default function MenuGroupPanel({
                   <label htmlFor={`pick-${r.id}`} style={{ flex: 1, cursor: "pointer" }}>
                     {r.title}
                   </label>
-                  <span className="grocery-detail">{menuCategoryLabel(r.menuCategory || "uncategorized")}</span>
+                  <div style={{ width: 168 }}>
+                    <MenuCategoryField
+                      id={`pick-category-${r.id}`}
+                      value={categories[r.id] ?? r.menuCategory}
+                      onChange={(value) => updateCategory(r.id, value)}
+                      label={false}
+                    />
+                  </div>
                 </li>
               ))}
             </ul>
           )}
+
         </section>
       </div>
 
@@ -198,7 +257,10 @@ export default function MenuGroupPanel({
             <p>Check off recipes on the left to build it out.</p>
           </div>
         ) : (
-          <div className="card card-pad" style={{ "--menu-accent": accent } as React.CSSProperties}>
+          <div
+            className={`card card-pad menu-theme-${theme}`}
+            style={{ "--menu-accent": accent } as React.CSSProperties}
+          >
             {grouped.map((section) => (
               <div key={section.key} className="menu-section">
                 <h3 className="menu-section-title">{section.label}</h3>

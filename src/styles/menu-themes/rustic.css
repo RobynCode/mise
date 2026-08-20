@@ -1,0 +1,27 @@
+/* Rustic / farmhouse: warm wood tones, twine dividers, hand-set type */
+
+.menu-theme-rustic {
+  background:
+    repeating-linear-gradient(180deg, transparent 0 26px, color-mix(in srgb, var(--text) 4%, transparent) 26px 27px),
+    #f1e6d2;
+  border: 2px solid #8a6a4a;
+  border-radius: 6px;
+}
+[data-theme="dark"] .menu-theme-rustic {
+  background:
+    repeating-linear-gradient(180deg, transparent 0 26px, color-mix(in srgb, #fff 6%, transparent) 26px 27px),
+    #2c2115;
+  border-color: #6b5236;
+}
+
+.menu-theme-rustic .menu-section-title {
+  font-family: Georgia, var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6b4423;
+}
+.menu-theme-rustic .menu-section-title::after { height: 0; border-bottom: 2px dashed #8a6a4a; background: none; }
+
+.menu-theme-rustic .menu-item { border-bottom: 1px solid color-mix(in srgb, #8a6a4a 45%, transparent); }
+.menu-theme-rustic .menu-item-name { font-weight: 600; color: #4a3524; }
+.menu-theme-rustic .menu-item-meta { color: #6b4423; }

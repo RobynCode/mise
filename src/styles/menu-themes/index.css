@@ -1,0 +1,7 @@
+/* Menu theme overrides — one file per preset, keyed by the `.menu-theme-<id>` class
+   applied to the menu preview based on the menu's `theme` field (see src/lib/menus.ts). */
+
+@import "./retro.css";
+@import "./bistro.css";
+@import "./rustic.css";
+@import "./chalkboard.css";

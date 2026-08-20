@@ -38,8 +38,13 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       await menuGroups.setRecipes(id, validIds);
     }
 
-    if (body.name != null || body.theme != null) {
-      const data = sanitizeMenuGroupInput({ name: body.name ?? group.name, theme: body.theme ?? group.theme });
+    if (body.name != null || body.theme != null || body.primaryColor != null || body.secondaryColor != null) {
+      const data = sanitizeMenuGroupInput({
+        name: body.name ?? group.name,
+        theme: body.theme ?? group.theme,
+        primaryColor: body.primaryColor ?? group.primaryColor,
+        secondaryColor: body.secondaryColor ?? group.secondaryColor,
+      });
       await menuGroups.update(id, data);
     }
 

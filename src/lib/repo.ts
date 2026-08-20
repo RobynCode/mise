@@ -238,6 +238,9 @@ export const recipes = {
   async remove(id: string): Promise<void> {
     await execute("DELETE FROM recipes WHERE id = ?", [id]);
   },
+  async updateMenuCategory(id: string, menuCategory: string): Promise<void> {
+    await execute("UPDATE recipes SET menuCategory = ?, updatedAt = NOW() WHERE id = ?", [menuCategory, id]);
+  },
   async creatorName(recipe: RecipeRow): Promise<string | null> {
     if (!recipe.createdById) return null;
     const rows = await query<{ name: string }>("SELECT name FROM users WHERE id = ?", [recipe.createdById]);

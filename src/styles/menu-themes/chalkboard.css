@@ -1,0 +1,21 @@
+/* Chalkboard cafe: dark board, chalk-dust text, handwritten headings */
+
+.menu-theme-chalkboard {
+  background: radial-gradient(circle at 30% 20%, #2c332c, #1b201b 70%);
+  border: 10px solid #4a3524;
+  border-radius: 4px;
+  color: #f2efe4;
+}
+
+.menu-theme-chalkboard .menu-section-title {
+  font-family: "Segoe Print", "Bradley Hand", cursive, var(--font-display);
+  color: #f2efe4;
+  text-shadow: 0 0 2px rgba(242, 239, 228, 0.5);
+}
+.menu-theme-chalkboard .menu-section-title::after {
+  background: repeating-linear-gradient(90deg, rgba(242, 239, 228, 0.5) 0 6px, transparent 6px 10px);
+}
+
+.menu-theme-chalkboard .menu-item { border-bottom: 1px dashed rgba(242, 239, 228, 0.35); }
+.menu-theme-chalkboard .menu-item-name { font-family: "Segoe Print", "Bradley Hand", cursive; color: #f2efe4; }
+.menu-theme-chalkboard .menu-item-meta { color: rgba(242, 239, 228, 0.65); }

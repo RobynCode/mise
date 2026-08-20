@@ -1,0 +1,18 @@
+/* Bistro / fancy simple: refined serif type, thin gold rule, generous spacing */
+
+.menu-theme-bistro {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+}
+
+.menu-theme-bistro .menu-section-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.menu-theme-bistro .menu-section-title::after { height: 1px; background: linear-gradient(90deg, var(--accent), transparent); }
+
+.menu-theme-bistro .menu-item { border-bottom-style: dotted; }
+.menu-theme-bistro .menu-item-name { font-weight: 500; letter-spacing: 0.01em; }
+.menu-theme-bistro .menu-item-meta { font-style: italic; }

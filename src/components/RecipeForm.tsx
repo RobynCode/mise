@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Plus, X } from "lucide-react";
 import { UNITS, type Ingredient } from "@/lib/units";
 import { parseIngredientLines, newId } from "@/lib/ingredients";
-import { MENU_CATEGORIES } from "@/lib/menus";
+import MenuCategoryField from "@/components/MenuCategoryField";
 
 interface RecipeDraft {
   id?: string;
@@ -174,23 +174,13 @@ export default function RecipeForm({ initial }: { initial?: RecipeDraft }) {
             />
             <p className="hint">Separate with commas.</p>
           </div>
-            <div className="field">
-            <label htmlFor="menuCategory">Menu category</label>
-            <select
+            <MenuCategoryField
               id="menuCategory"
-              className="select"
               value={draft.menuCategory}
-              onChange={(e) => patch({ menuCategory: e.target.value })}
-            >
-              <option value="">Uncategorized</option>
-              {MENU_CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-            <p className="hint">Where this recipe appears on a restaurant-style menu.</p>
-          </div>
+              onChange={(menuCategory) => patch({ menuCategory })}
+              label="Menu category"
+              hint="Where this recipe appears on a restaurant-style menu."
+            />
         </div>
         <div className="grid-2">
           <div className="field">

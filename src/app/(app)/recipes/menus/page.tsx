@@ -47,7 +47,7 @@ export default async function MenusPage() {
                 <span
                   className="menu-card-swatch"
                   aria-hidden="true"
-                  style={{ background: `linear-gradient(135deg, ${preset.primaryColor}, ${preset.secondaryColor})` }}
+                  style={{ background: `linear-gradient(135deg, ${g.primaryColor}, ${g.secondaryColor})` }}
                 />
                 <div className="menu-card-body">
                   <h3>{g.name}</h3>
