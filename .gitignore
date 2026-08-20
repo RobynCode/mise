@@ -5,4 +5,5 @@ node_modules/
 public/uploads/*
 !public/uploads/.gitkeep
 .env
+.env.local
 data/

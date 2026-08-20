@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { query, execute, driver, dialect, isPostgres, ready } from "./db";
+import { query, execute, driver, ready } from "./db";
 
 /* ---------- row types ---------- */
 
@@ -70,7 +70,7 @@ export type UserWithHousehold = UserRow & {
   household: HouseholdRow & { members: MemberSummary[] };
 };
 
-/** COUNT() comes back as a bigint string from Postgres and a number from SQLite. */
+/** Postgres returns COUNT() as a bigint string; normalize it to a number. */
 function toCount(v: unknown): number {
   return typeof v === "number" ? v : Number(v ?? 0);
 }
@@ -183,11 +183,11 @@ export const recipes = {
     householdId: string,
     opts?: { query?: string; limit?: number; orderBy?: "updated" | "title"; minCal?: number; maxCal?: number },
   ): Promise<RecipeRow[]> {
-    const order = opts?.orderBy === "title" ? `${dialect.caseInsensitive("title")} ASC` : "updatedAt DESC";
+    const order = opts?.orderBy === "title" ? "LOWER(title) ASC" : "updatedAt DESC";
     const where: string[] = ["householdId = ?"];
     const params: unknown[] = [householdId];
     if (opts?.query) {
-      where.push(`(title ${dialect.like} ? OR tags ${dialect.like} ? OR ingredients ${dialect.like} ?)`);
+      where.push(`(title ILIKE ? OR tags ILIKE ? OR ingredients ILIKE ?)`);
       const like = `%${opts.query}%`;
       params.push(like, like, like);
     }
@@ -225,7 +225,7 @@ export const recipes = {
        title = ?, description = ?, imageUrl = ?, sourceUrl = ?, sourceName = ?,
        servings = ?, prepMinutes = ?, cookMinutes = ?, ingredients = ?, steps = ?, tags = ?,
        nutrition = ?, caloriesPerServing = ?, menuCategory = ?,
-       updatedAt = ${dialect.now}
+       updatedAt = NOW()
        WHERE id = ?`,
       [
         data.title, data.description, data.imageUrl, data.sourceUrl, data.sourceName,
@@ -263,10 +263,9 @@ export const menuGroups = {
     return rows[0];
   },
   async forHousehold(householdId: string): Promise<MenuGroupRow[]> {
-    return query<MenuGroupRow>(
-      `SELECT * FROM menu_group WHERE householdId = ? ORDER BY ${dialect.caseInsensitive("name")} ASC`,
-      [householdId],
-    );
+    return query<MenuGroupRow>("SELECT * FROM menu_group WHERE householdId = ? ORDER BY LOWER(name) ASC", [
+      householdId,
+    ]);
   },
   async create(data: {
     name: string;
@@ -308,7 +307,7 @@ export const menuGroups = {
       `SELECT r.* FROM recipes r
        JOIN menu_group_recipes m ON m.recipeId = r.id
        WHERE m.menuGroupId = ?
-       ORDER BY ${dialect.caseInsensitive("r.title")} ASC`,
+       ORDER BY LOWER(r.title) ASC`,
       [menuGroupId],
     );
   },
@@ -381,20 +380,17 @@ export const planEntries = {
 export const groceryItems = {
   async byId(id: string): Promise<GroceryItemRow | undefined> {
     const rows = await query<GroceryItemRow>("SELECT * FROM grocery_items WHERE id = ?", [id]);
-    const row = rows[0];
-    return row ? { ...row, checked: dialect.toBool(row.checked) } : undefined;
+    return rows[0];
   },
   async forHousehold(householdId: string): Promise<GroceryItemRow[]> {
-    const rows = await query<GroceryItemRow>(
-      `SELECT * FROM grocery_items WHERE householdId = ? ORDER BY checked ASC, ${dialect.caseInsensitive("name")} ASC`,
-      [householdId],
-    );
-    return rows.map((r) => ({ ...r, checked: dialect.toBool(r.checked) }));
+    return query<GroceryItemRow>("SELECT * FROM grocery_items WHERE householdId = ? ORDER BY checked ASC, LOWER(name) ASC", [
+      householdId,
+    ]);
   },
   async countUnchecked(householdId: string): Promise<number> {
     const rows = await query<{ n: unknown }>(
       "SELECT COUNT(*) AS n FROM grocery_items WHERE householdId = ? AND checked = ?",
-      [householdId, dialect.bool(false)],
+      [householdId, false],
     );
     return toCount(rows[0]?.n);
   },
@@ -427,7 +423,7 @@ export const groceryItems = {
     });
   },
   async setChecked(id: string, checked: boolean): Promise<void> {
-    await execute("UPDATE grocery_items SET checked = ? WHERE id = ?", [dialect.bool(checked), id]);
+    await execute("UPDATE grocery_items SET checked = ? WHERE id = ?", [checked, id]);
   },
   async remove(id: string): Promise<void> {
     await execute("DELETE FROM grocery_items WHERE id = ?", [id]);
@@ -436,7 +432,7 @@ export const groceryItems = {
     if (onlyChecked) {
       await execute("DELETE FROM grocery_items WHERE householdId = ? AND checked = ?", [
         householdId,
-        dialect.bool(true),
+        true,
       ]);
     } else {
       await execute("DELETE FROM grocery_items WHERE householdId = ?", [householdId]);
@@ -465,9 +461,9 @@ export const nutritionCache = {
   },
   async set(name: string, data: CachedFood | null): Promise<void> {
     const payload = data ? JSON.stringify(data) : null;
-    const sql = isPostgres
-      ? "INSERT INTO nutrition_cache (name, data) VALUES (?, ?) ON CONFLICT (name) DO UPDATE SET data = EXCLUDED.data"
-      : "INSERT OR REPLACE INTO nutrition_cache (name, data) VALUES (?, ?)";
-    await execute(sql, [name.toLowerCase(), payload]);
+    await execute(
+      "INSERT INTO nutrition_cache (name, data) VALUES (?, ?) ON CONFLICT (name) DO UPDATE SET data = EXCLUDED.data",
+      [name.toLowerCase(), payload],
+    );
   },
 };
