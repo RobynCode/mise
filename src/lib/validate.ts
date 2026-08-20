@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 import { kindOfUnit, type Ingredient } from "./units";
-import { isMenuCategory, isMenuTheme, themeById } from "./menus";
+import { isMenuTheme, themeById } from "./menus";
 
 export function newInviteCode() {
   // 6 chars, unambiguous alphabet
@@ -51,8 +51,20 @@ export function sanitizeRecipeInput(body: Record<string, unknown>) {
     ingredients: JSON.stringify(ingredients),
     steps: JSON.stringify(steps),
     tags: String(body.tags ?? "").trim().slice(0, 300),
-    menuCategory: isMenuCategory(String(body.menuCategory ?? "")) ? String(body.menuCategory) : "",
+    menuCategory: sanitizeMenuCategory(body.menuCategory),
   };
+}
+
+/** Menu category is either a preset value or a household-typed custom label — either way it's just text. */
+export function sanitizeMenuCategory(value: unknown): string {
+  return String(value ?? "").trim().slice(0, 60);
+}
+
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
+function sanitizeHexColor(value: unknown, fallback: string): string {
+  const s = String(value ?? "").trim();
+  return HEX_COLOR.test(s) ? s : fallback;
 }
 
 export function sanitizeMenuGroupInput(body: Record<string, unknown>) {
@@ -64,7 +76,7 @@ export function sanitizeMenuGroupInput(body: Record<string, unknown>) {
   return {
     name,
     theme,
-    primaryColor: preset.primaryColor,
-    secondaryColor: preset.secondaryColor,
+    primaryColor: sanitizeHexColor(body.primaryColor, preset.primaryColor),
+    secondaryColor: sanitizeHexColor(body.secondaryColor, preset.secondaryColor),
   };
 }

@@ -19,8 +19,10 @@ export function isMenuCategory(v: string): v is MenuCategory {
   return CATEGORY_VALUES.has(v);
 }
 
+/** Presets resolve to their display label; anything else is a household's custom category label. */
 export function menuCategoryLabel(value: string): string {
-  return MENU_CATEGORIES.find((c) => c.value === value)?.label ?? "Uncategorized";
+  if (!value) return "Uncategorized";
+  return MENU_CATEGORIES.find((c) => c.value === value)?.label ?? value;
 }
 
 /** Preset visual styles a household can pick for a menu. Each one maps to a `.menu-theme-<value>`

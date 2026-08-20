@@ -27,7 +27,7 @@ export default async function MenuDetailPage({ params }: { params: Promise<{ id:
         </div>
       </div>
       <MenuGroupPanel
-        menu={{ id: menu.id, name: menu.name, theme: menu.theme }}
+        menu={{ id: menu.id, name: menu.name, theme: menu.theme, primaryColor: menu.primaryColor, secondaryColor: menu.secondaryColor }}
         allRecipes={allRecipes.map((r) => ({
           id: r.id,
           title: r.title,
