@@ -9,7 +9,7 @@
  *   2. Match the ingredient name against the bundled food database
  *      (exact → singular/plural → longest whole-word alias inside the name).
  *   3. If no local match and USDA_API_KEY is set, query USDA FoodData
- *      Central (cached in SQLite so each name is fetched at most once).
+ *      Central (cached in Postgres so each name is fetched at most once).
  *   4. Sum macros; divide by servings.
  *
  * Results are approximate by nature and flagged with coverage

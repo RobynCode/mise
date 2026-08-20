@@ -19,7 +19,7 @@ function dateStr(offsetDays: number) {
 
 async function main() {
   await ready();
-  console.log(`Seeding ${driver.kind} database…`);
+  console.log("Seeding database…");
 
   if (await users.byEmail("demo@mise.local")) {
     console.log("Seed data already present — skipping.");
